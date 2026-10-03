@@ -1,0 +1,56 @@
+{{define "title"}}Links{{end}}
+
+{{define "content"}}
+<section class="card">
+  <h2>New link</h2>
+  {{with .Error}}<p class="alert error">{{.}}</p>{{end}}
+  {{with .Created}}
+  <p class="alert success">
+    Created <a href="{{.RedirectURL}}">{{.RedirectURL}}</a>
+    <button type="button" class="ghost small" onclick="navigator.clipboard.writeText('{{.RedirectURL}}'); this.textContent = 'Copied'">Copy</button>
+  </p>
+  {{end}}
+  <form method="post" action="/api/private/links" class="create">
+    <input type="url" name="url" placeholder="https://example.com/a/long/url" value="{{.URL}}" required aria-label="Destination URL">
+    <input type="text" name="name" placeholder="custom name (optional)" value="{{.Name}}" pattern="[A-Za-z0-9_\-]{1,64}" aria-label="Custom name">
+    <button class="primary">Shorten</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Links <span class="muted">{{len .Links}}</span></h2>
+  {{if .Links}}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Short link</th><th>Destination</th><th class="num">Clicks</th><th class="num">Bots</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody>
+    {{range .Links}}
+      <tr>
+        <td>
+          <a href="/admin/links/{{.Name}}"><strong>{{.Name}}</strong></a>
+          <div class="muted small">{{.RedirectURL}}</div>
+        </td>
+        <td class="truncate"><a href="{{.URL}}" target="_blank" rel="noreferrer">{{.URL}}</a></td>
+        <td class="num">{{.Clicks}}</td>
+        <td class="num muted">{{.BotClicks}}</td>
+        <td class="muted small" title="{{.CreatedAt}} UTC">{{slice .CreatedAt 0 10}}</td>
+        <td>
+          <div class="actions">
+            <button type="button" class="ghost small" onclick="navigator.clipboard.writeText('{{.RedirectURL}}'); this.textContent = 'Copied'">Copy</button>
+            <form method="post" action="/api/private/links/{{.Name}}/delete" onsubmit="return confirm('Delete {{.Name}} and all its clicks?')">
+              <button class="danger small">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+  {{else}}
+  <p class="muted">No links yet. Create one above.</p>
+  {{end}}
+</section>
+{{end}}

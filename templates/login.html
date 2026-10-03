@@ -1,0 +1,14 @@
+{{define "title"}}Log in{{end}}
+
+{{define "content"}}
+<section class="card narrow">
+  <h1>Log in</h1>
+  {{with .Error}}<p class="alert error">{{.}}</p>{{end}}
+  <form method="post" action="/api/public/login" class="stack">
+    <label>Admin token
+      <input type="password" name="token" autocomplete="current-password" required autofocus>
+    </label>
+    <button class="primary">Log in</button>
+  </form>
+</section>
+{{end}}

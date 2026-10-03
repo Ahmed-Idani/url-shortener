@@ -1,0 +1,208 @@
+{{define "title"}}{{.Link.Name}} · Stats{{end}}
+
+{{define "scripts"}}<script src="/admin/static/charts.js" defer></script>{{end}}
+
+{{define "delta"}}
+  {{if .Delta}}
+    {{with .Delta}}
+    <span class="delta {{if .Flat}}flat{{else if .Up}}up{{else}}down{{end}}">
+      {{if .Flat}}No change{{else}}{{if .Up}}▲{{else}}▼{{end}} {{if .New}}New{{else}}{{.Percent}}%{{end}}{{end}}
+    </span>
+    {{end}}
+    <span class="muted small">vs previous {{.Period}}</span>
+  {{else if .Period}}
+    <span class="muted small">No visits in previous {{.Period}}</span>
+  {{end}}
+{{end}}
+
+{{define "content"}}
+{{$d := .Dash}}
+{{$name := .Link.Name}}
+{{$period := ""}}{{if ne $d.Range.Key "all"}}{{$period = $d.Range.Label}}{{end}}
+
+<p class="crumb"><a href="/admin/">← All links</a></p>
+
+<header class="page-head">
+  <div>
+    <h1>{{.Link.Name}}</h1>
+    <p class="muted break">
+      <a href="{{.Link.RedirectURL}}">{{.Link.RedirectURL}}</a>
+      →
+      <a href="{{.Link.URL}}" target="_blank" rel="noreferrer">{{.Link.URL}}</a>
+    </p>
+  </div>
+  <button type="button" class="ghost" onclick="navigator.clipboard.writeText('{{.Link.RedirectURL}}'); this.textContent = 'Copied'">Copy link</button>
+</header>
+
+<nav class="filters" aria-label="Filters">
+  <div class="segmented" role="group" aria-label="Date range">
+    {{range .Ranges}}
+    <a href="{{statsURL $name .Key $d.IncludeBots}}"{{if eq .Key $d.Range.Key}} aria-current="true"{{end}}>{{.Label}}</a>
+    {{end}}
+  </div>
+  <a class="toggle" role="switch" aria-checked="{{$d.IncludeBots}}" href="{{statsURL $name $d.Range.Key (not $d.IncludeBots)}}">
+    <span class="switch" aria-hidden="true"></span>Include bots
+  </a>
+  <span class="muted small push">Times in {{.Timezone}}</span>
+</nav>
+
+<section class="kpis" aria-label="Summary">
+  <div class="tile hero">
+    <span class="label">Visitors</span>
+    <span class="value">{{$d.Visitors}}</span>
+    <span class="meta">{{template "delta" (dict "Delta" $d.VisitorsDelta "Period" $period)}}</span>
+  </div>
+  <div class="tile">
+    <span class="label">Unique visitors</span>
+    <span class="value">{{$d.UniqueVisitors}}</span>
+    <span class="meta">{{template "delta" (dict "Delta" $d.UniqueDelta "Period" $period)}}</span>
+  </div>
+  <div class="tile">
+    <span class="label">Bots{{if not $d.IncludeBots}} filtered out{{end}}</span>
+    <span class="value">{{$d.Bots}}</span>
+    <span class="meta muted small">{{$d.BotShare}}% of all clicks</span>
+  </div>
+  <div class="tile">
+    <span class="label">Last visit</span>
+    <span class="value small-value" title="{{$d.LastVisitTitle}}">{{if $d.LastVisit}}{{$d.LastVisit}}{{else}}—{{end}}</span>
+    <span class="meta muted small">{{if $d.LastVisitTitle}}{{$d.LastVisitTitle}}{{else}}No visits in this period{{end}}</span>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{if $d.IncludeBots}}Clicks{{else}}Visitors{{end}} per {{$d.Timeline.Unit}}</h2>
+    {{if $d.IncludeBots}}
+    <div class="legend small">
+      <span><i class="swatch visitors"></i>Visitors</span>
+      <span><i class="swatch bots"></i>Bots</span>
+    </div>
+    {{end}}
+  </div>
+  <div class="timeline">
+    <div class="plot">
+      {{range $d.Timeline.Ticks}}
+      <div class="gridline" style="bottom: {{.Pct}}%"><span>{{.Value}}</span></div>
+      {{end}}
+      <div class="cols">
+        {{range $d.Timeline.Buckets}}
+        <div class="col" tabindex="0" data-tip="{{.Tip}}" aria-label="{{.Title}}: {{.Visitors}} visitors{{if $d.IncludeBots}}, {{.Bots}} bots{{end}}">
+          <div class="bar-stack">
+            {{if .Visitors}}<div class="seg visitors" style="height: {{.VisitorsPct}}%"></div>{{end}}
+            {{if .Bots}}<div class="seg bots" style="height: {{.BotsPct}}%"></div>{{end}}
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
+    <div class="xaxis" aria-hidden="true">
+      {{range $d.Timeline.Buckets}}<span>{{.AxisLabel}}</span>{{end}}
+    </div>
+  </div>
+  <details class="table-view">
+    <summary>Show as table</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{$d.Timeline.Unit}}</th><th class="num">Visitors</th>{{if $d.IncludeBots}}<th class="num">Bots</th>{{end}}</tr></thead>
+        <tbody>
+          {{range $d.Timeline.Buckets}}
+          <tr><td>{{.Title}}</td><td class="num">{{.Visitors}}</td>{{if $d.IncludeBots}}<td class="num">{{.Bots}}</td>{{end}}</tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>When people click</h2>
+    <span class="muted small">Day of week × hour of day</span>
+  </div>
+  <div class="heatmap-wrap">
+    <div class="heatmap">
+      <span></span>
+      {{range $d.Heatmap.Hours}}<span class="hour">{{.}}</span>{{end}}
+      {{range $d.Heatmap.Days}}
+      <span class="dayname">{{.Name}}</span>
+      {{range .Cells}}<span class="cell l{{.Level}}" data-tip="{{.Tip}}"></span>{{end}}
+      {{end}}
+    </div>
+  </div>
+  <div class="scale small muted" aria-hidden="true">
+    <span>0</span>
+    <i class="cell l0"></i><i class="cell l1"></i><i class="cell l2"></i><i class="cell l3"></i><i class="cell l4"></i><i class="cell l5"></i>
+    <span>{{$d.Heatmap.Max}} clicks / hour</span>
+  </div>
+  <details class="table-view">
+    <summary>Show as table</summary>
+    <div class="table-wrap">
+      <table class="dense">
+        <thead><tr><th></th>{{range $i, $h := $d.Heatmap.Hours}}<th class="num">{{printf "%02d" $i}}</th>{{end}}</tr></thead>
+        <tbody>
+          {{range $d.Heatmap.Days}}
+          <tr><th>{{.Name}}</th>{{range .Cells}}<td class="num">{{.Count}}</td>{{end}}</tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<div class="grid">
+  {{range $d.Breakdowns}}
+  <section class="card">
+    <h2>{{.Title}}</h2>
+    {{if .Rows}}
+    <table class="breakdown">
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td>
+            <div class="row-label">{{.Label}}</div>
+            <div class="hbar" style="width: {{.Width}}%"></div>
+          </td>
+          <td class="num">{{.Count}}</td>
+          <td class="num muted">{{.Percent}}%</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <p class="muted">No clicks in this period.</p>
+    {{end}}
+  </section>
+  {{end}}
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Recent clicks</h2>
+    <span class="muted small">Latest {{len $d.Recent}} of {{$d.Shown}}</span>
+  </div>
+  {{if $d.Recent}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Time</th><th>Country</th><th>Device</th><th>Browser</th><th>Referrer</th><th>IP</th>{{if $d.IncludeBots}}<th></th>{{end}}</tr>
+      </thead>
+      <tbody>
+        {{range $d.Recent}}
+        <tr>
+          <td class="nowrap" title="{{.FullTime}}">{{.Time}}</td>
+          <td class="nowrap">{{.Country}}</td>
+          <td>{{.Device}}</td>
+          <td class="nowrap">{{.Browser}}</td>
+          <td>{{.Referrer}}</td>
+          <td class="ip muted" title="{{.IP}}">{{.IP}}</td>
+          {{if $d.IncludeBots}}<td>{{if .Bot}}<span class="badge">Bot</span>{{end}}</td>{{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">No clicks in this period.</p>
+  {{end}}
+</section>
+{{end}}

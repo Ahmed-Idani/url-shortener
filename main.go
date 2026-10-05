@@ -43,7 +43,7 @@ func redirectHandler(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	addr, err := ip.ExtractIP(r.RemoteAddr)
+	addr, err := ip.ClientIP(r)
 	if err != nil {
 		fmt.Println(err)
 	} else {
